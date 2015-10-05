@@ -125,6 +125,12 @@ public class QryEval {
 		else if(modelString.equals("rankedboolean")){
 			model = new RetrievalModelRankedBoolean();
 		}
+		else if(modelString.equals("bm25")){
+			double b = Double.parseDouble(parameters.get ("BM25:b"));
+			double k_1 = Double.parseDouble(parameters.get ("BM25:k_1"));
+			double k_3 = Double.parseDouble(parameters.get ("BM25:k_3"));
+			model = new RetrievalModelBM25(b,k_1,k_3);	
+		}
 		else {
 			throw new IllegalArgumentException
 			("Unknown retrieval model " + parameters.get("retrievalAlgorithm"));
@@ -219,7 +225,11 @@ public class QryEval {
 				currentOp = new QryIopNear(n);
 				currentOp.setDisplayName (token + "/" + n);
 				opStack.push(currentOp);  
-			} else {
+			}  else if (token.equalsIgnoreCase("#sum")){
+				currentOp = new QrySopSum();
+				currentOp.setDisplayName (token);
+				opStack.push(currentOp);  	
+			}else {
 
 				//  Split the token into a term and a field.
 
