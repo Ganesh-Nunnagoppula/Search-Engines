@@ -22,6 +22,9 @@ public abstract class QrySop extends Qry {
 	 */
 	public abstract double getScore (RetrievalModel r)
 			throws IOException;
+	
+	public abstract double getDefaultScoreIndri (RetrievalModel r, int doc_id_current)
+			throws IOException;
 
 	/**
 	 *  Initialize the query operator (and its arguments), including any

@@ -15,6 +15,9 @@ public class QrySopAnd extends QrySop {
 	 *  @return True if the query matches, otherwise false.
 	 */
 	public boolean docIteratorHasMatch (RetrievalModel r) {
+		if(r instanceof RetrievalModelIndri){
+			return this.docIteratorHasMatchMin(r);
+		}
 		return this.docIteratorHasMatchAll(r);
 	}
 
@@ -31,6 +34,9 @@ public class QrySopAnd extends QrySop {
 		} 
 		else if(r instanceof RetrievalModelRankedBoolean){
 			return this.getScoreRankedBoolean (r);
+		}
+		else if(r instanceof RetrievalModelIndri){
+			return this.getScoreIndri (r);
 		}
 		else {
 			throw new IllegalArgumentException
@@ -69,6 +75,35 @@ public class QrySopAnd extends QrySop {
 			}
 			return min;
 		}
+	}
+	private double getScoreIndri (RetrievalModel r) throws IOException {
+		if(!this.docIteratorHasMatch(r)) {
+			return 0.0;
+		}else {
+			int doc_id_current = this.docIteratorGetMatch();
+			double score = 1;
+			double temp = 0;
+			for(int i=0;i<this.args.size();i++){
+				if(this.args.get(i).docIteratorHasMatch(r) && (doc_id_current==this.args.get(i).docIteratorGetMatch())){
+					temp = this.args.get(i).getScore(r);
+				}
+				else{
+					temp = ((QrySop)this.args.get(i)).getDefaultScoreIndri(r, doc_id_current);
+				}
+				score = score * Math.pow(temp, 1/(double)args.size());
+			}
+			return score;
+		}
+	}
+	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current)
+			throws IOException{
+		double score = 1;
+		double temp = 0;
+		for(int i=0;i<this.args.size();i++){
+			temp = ((QrySop)this.args.get(i)).getDefaultScoreIndri(r, doc_id_current);
+			score = score * Math.pow(temp, 1/(double)args.size());
+		}
+		return score;		
 	}
 
 }

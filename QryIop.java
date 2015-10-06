@@ -263,6 +263,9 @@ public abstract class QryIop extends Qry {
 		else if(r instanceof RetrievalModelBM25){
 			return this.docIteratorGetMatchPosting().tf;
 		}
+		else if(r instanceof RetrievalModelIndri){
+			return this.docIteratorGetMatchPosting().tf;
+		}
 		else{
 			return 0;
 		}

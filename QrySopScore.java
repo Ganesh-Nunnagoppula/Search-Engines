@@ -41,6 +41,9 @@ public class QrySopScore extends QrySop {
 		else if(r instanceof RetrievalModelBM25){
 			return this.getScoreBM25(r);
 		}
+		else if(r instanceof RetrievalModelIndri){
+			return this.getScoreIndri(r);
+		}
 		else {
 			throw new IllegalArgumentException
 			(r.getClass().getName() + " doesn't support the SCORE operator.");
@@ -81,13 +84,46 @@ public class QrySopScore extends QrySop {
 			double docFreq = this.getArg(0).getDf(); 
 					//this.getArg(0).getDf();
 			double docLength = Idx.getFieldLength(this.getArg(0).invertedList.field, doc_id_current);
-			double avgLength = Idx.getSumOfFieldLengths(this.getArg(0).invertedList.field)/Idx.getDocCount(this.getArg(0).invertedList.field);
+			double avgLength = Idx.getSumOfFieldLengths(this.getArg(0).invertedList.field)/(double)Idx.getDocCount(this.getArg(0).invertedList.field);
+			//Idx.getDocCount(this.getArg(0).invertedList.field)
 			double b = ((RetrievalModelBM25) r).getb();
 			double k_1 = ((RetrievalModelBM25) r).getk_1();
 			double k_3 = ((RetrievalModelBM25) r).getk_3();
 			double rsjWeight = Math.log((N-docFreq+0.5)/(docFreq+0.5));
 			double tfWeight = termFreq/(termFreq + k_1*((1-b) + (b*docLength)/avgLength));
 			return(rsjWeight*tfWeight);
+		}
+	}
+	
+	public double getScoreIndri (RetrievalModel r) throws IOException {
+		if (! this.docIteratorHasMatchCache()) {
+			return 0.0;
+		} else {
+			int doc_id_current = this.docIteratorGetMatch();
+			double termFreq = this.args.get(0).getScore(r);
+			double corpusTermFreq = this.getArg(0).getCtf();
+			double docLength = Idx.getFieldLength(this.getArg(0).invertedList.field, doc_id_current);
+			double corpusLength = Idx.getSumOfFieldLengths(this.getArg(0).invertedList.field);
+			double mu = ((RetrievalModelIndri) r).getmu();
+			double lambda = ((RetrievalModelIndri) r).getlambda();
+			double p_mle = corpusTermFreq/corpusLength;
+			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
+		}
+	}
+	
+	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current) throws IOException {
+		if (! this.docIteratorHasMatchCache()) {
+			return 0.0;
+		} else {
+			//int doc_id_current = this.docIteratorGetMatch();
+			double termFreq = 0;
+			double corpusTermFreq = this.getArg(0).getCtf();
+			double docLength = Idx.getFieldLength(this.getArg(0).invertedList.field, doc_id_current);
+			double corpusLength = Idx.getSumOfFieldLengths(this.getArg(0).invertedList.field);
+			double mu = ((RetrievalModelIndri) r).getmu();
+			double lambda = ((RetrievalModelIndri) r).getlambda();
+			double p_mle = corpusTermFreq/corpusLength;
+			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
 		}
 	}
 	

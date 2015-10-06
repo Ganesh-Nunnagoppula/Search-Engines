@@ -131,6 +131,11 @@ public class QryEval {
 			double k_3 = Double.parseDouble(parameters.get ("BM25:k_3"));
 			model = new RetrievalModelBM25(b,k_1,k_3);	
 		}
+		else if(modelString.equals("indri")){
+			double mu = Double.parseDouble(parameters.get ("Indri:mu"));
+			double lambda = Double.parseDouble(parameters.get ("Indri:lambda"));
+			model = new RetrievalModelIndri(mu,lambda);	
+		}
 		else {
 			throw new IllegalArgumentException
 			("Unknown retrieval model " + parameters.get("retrievalAlgorithm"));
@@ -387,9 +392,9 @@ public class QryEval {
 			if (q.args.size () > 0) {		// Ignore empty queries
 
 				q.initialize (model);
-
 				while (q.docIteratorHasMatch (model)) {
 					int docid = q.docIteratorGetMatch ();
+					System.out.println(docid + "\n");
 					double score = ((QrySop) q).getScore (model);
 					r.add (docid, score);
 					q.docIteratorAdvancePast (docid);

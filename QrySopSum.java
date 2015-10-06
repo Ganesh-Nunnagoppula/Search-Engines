@@ -48,4 +48,8 @@ public class QrySopSum extends QrySop {
 		}
 		
 	}
+	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current)
+			throws IOException{
+		return 0;	
+	}
 }
