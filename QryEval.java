@@ -394,7 +394,7 @@ public class QryEval {
 				q.initialize (model);
 				while (q.docIteratorHasMatch (model)) {
 					int docid = q.docIteratorGetMatch ();
-					System.out.println(docid + "\n");
+					//System.out.println(docid + "\n");
 					double score = ((QrySop) q).getScore (model);
 					r.add (docid, score);
 					q.docIteratorAdvancePast (docid);

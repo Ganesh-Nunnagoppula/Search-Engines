@@ -89,7 +89,7 @@ public class QrySopScore extends QrySop {
 			double b = ((RetrievalModelBM25) r).getb();
 			double k_1 = ((RetrievalModelBM25) r).getk_1();
 			double k_3 = ((RetrievalModelBM25) r).getk_3();
-			double rsjWeight = Math.log((N-docFreq+0.5)/(docFreq+0.5));
+			double rsjWeight = Math.max(0,Math.log((N-docFreq+0.5)/(docFreq+0.5)));
 			double tfWeight = termFreq/(termFreq + k_1*((1-b) + (b*docLength)/avgLength));
 			return(rsjWeight*tfWeight);
 		}
@@ -112,9 +112,9 @@ public class QrySopScore extends QrySop {
 	}
 	
 	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current) throws IOException {
-		if (! this.docIteratorHasMatchCache()) {
+		/*if (! this.docIteratorHasMatchCache()) {
 			return 0.0;
-		} else {
+		} else {*/
 			//int doc_id_current = this.docIteratorGetMatch();
 			double termFreq = 0;
 			double corpusTermFreq = this.getArg(0).getCtf();
@@ -124,7 +124,7 @@ public class QrySopScore extends QrySop {
 			double lambda = ((RetrievalModelIndri) r).getlambda();
 			double p_mle = corpusTermFreq/corpusLength;
 			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
-		}
+		//}
 	}
 	
 
