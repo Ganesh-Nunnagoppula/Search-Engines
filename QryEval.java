@@ -230,7 +230,11 @@ public class QryEval {
 				currentOp = new QryIopNear(n);
 				currentOp.setDisplayName (token + "/" + n);
 				opStack.push(currentOp);  
-			}  else if (token.equalsIgnoreCase("#sum")){
+			} else if (token.equalsIgnoreCase("#window")) {
+				currentOp = new QryIopWindow(n);
+				currentOp.setDisplayName (token + "/" + n);
+				opStack.push(currentOp);   
+		    } else if (token.equalsIgnoreCase("#sum")){
 				currentOp = new QrySopSum();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp);  	

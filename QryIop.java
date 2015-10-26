@@ -100,6 +100,12 @@ public abstract class QryIop extends Qry {
 	public void docIteratorFinish () {
 		this.docIteratorIndex = this.invertedList.postings.size();
 	}
+	
+	public void docIteratorStart () {
+		this.docIteratorIndex = 0;
+	}
+	
+	
 
 	/**
 	 *  Return the id of the document that the query operator's internal
