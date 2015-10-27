@@ -97,9 +97,9 @@ public class QrySopScore extends QrySop {
 	}
 	
 	public double getScoreIndri (RetrievalModel r) throws IOException {
-		if (! this.docIteratorHasMatchCache()) {
+		/*if (! this.docIteratorHasMatchCache()) {
 			return 0.0;
-		} else {
+		} else {*/
 
 			
 			int doc_id_current = this.docIteratorGetMatch();
@@ -112,7 +112,7 @@ public class QrySopScore extends QrySop {
 			double p_mle = corpusTermFreq/corpusLength;
 			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
 			
-		}
+		//}
 	}
 	
 	public double getScoreConstant(RetrievalModel r) throws IOException {

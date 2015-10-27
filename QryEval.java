@@ -412,6 +412,10 @@ public class QryEval {
 				q.initialize (model);
 				while (q.docIteratorHasMatch (model)) {
 					int docid = q.docIteratorGetMatch ();
+					if(docid==462807)
+					{
+						int temp = 1;
+					}
 					//System.out.println(docid + "\n");
 					double score = ((QrySop) q).getScore (model);
 					r.add (docid, score);

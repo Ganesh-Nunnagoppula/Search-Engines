@@ -77,9 +77,9 @@ public class QrySopAnd extends QrySop {
 		}
 	}
 	private double getScoreIndri (RetrievalModel r) throws IOException {
-		if(!this.docIteratorHasMatch(r)) {
+		/*if(!this.docIteratorHasMatch(r)) {
 			return 0.0;
-		}else {
+		}else {*/
 			int doc_id_current = this.docIteratorGetMatch();
 			double score = 1;
 			double temp = 0;
@@ -93,7 +93,7 @@ public class QrySopAnd extends QrySop {
 				score = score * Math.pow(temp, 1/(double)args.size());
 			}
 			return score;
-		}
+		//}
 	}
 	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current)
 			throws IOException{
