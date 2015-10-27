@@ -226,6 +226,10 @@ public class QryEval {
 				currentOp = new QrySopAnd();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp);  
+			} else if (token.equalsIgnoreCase("#wand")) {
+				currentOp = new QrySopWand();
+				currentOp.setDisplayName (token);
+				opStack.push(currentOp); 
 			} else if (token.equalsIgnoreCase("#near")) {
 				currentOp = new QryIopNear(n);
 				currentOp.setDisplayName (token + "/" + n);
@@ -237,7 +241,11 @@ public class QryEval {
 		    } else if (token.equalsIgnoreCase("#sum")){
 				currentOp = new QrySopSum();
 				currentOp.setDisplayName (token);
-				opStack.push(currentOp);  	
+				opStack.push(currentOp); 
+		    } else if (token.equalsIgnoreCase("#wsum")){
+				currentOp = new QrySopWsum();
+				currentOp.setDisplayName (token);
+				opStack.push(currentOp); 
 			}else {
 
 				//  Split the token into a term and a field.
@@ -250,8 +258,14 @@ public class QryEval {
 					field = "body";
 					term = token;
 				} else {
+
 					field = token.substring(delimiter + 1).toLowerCase();
 					term = token.substring(0, delimiter);
+					if(field.length()==1)
+					{
+						field = "body";
+						term = token;
+					}
 				}
 
 				if ((field.compareTo("url") != 0) &&

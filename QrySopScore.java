@@ -4,6 +4,7 @@
 
 import java.io.*;
 import java.lang.IllegalArgumentException;
+import java.lang.Object;
 
 /**
  *  The SCORE operator for all retrieval models.
@@ -99,6 +100,8 @@ public class QrySopScore extends QrySop {
 		if (! this.docIteratorHasMatchCache()) {
 			return 0.0;
 		} else {
+
+			
 			int doc_id_current = this.docIteratorGetMatch();
 			double termFreq = this.args.get(0).getScore(r);
 			double corpusTermFreq = this.getArg(0).getCtf();
@@ -108,7 +111,15 @@ public class QrySopScore extends QrySop {
 			double lambda = ((RetrievalModelIndri) r).getlambda();
 			double p_mle = corpusTermFreq/corpusLength;
 			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
+			
 		}
+	}
+	
+	public double getScoreConstant(RetrievalModel r) throws IOException {
+		String str = this.getArg(0).toString();
+		str = str.substring(0, 3);
+		double d = Double.parseDouble(str);
+		return d;	
 	}
 	
 	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current) throws IOException {
@@ -116,6 +127,7 @@ public class QrySopScore extends QrySop {
 			return 0.0;
 		} else {*/
 			//int doc_id_current = this.docIteratorGetMatch();
+		
 			double termFreq = 0;
 			double corpusTermFreq = this.getArg(0).getCtf();
 			double docLength = Idx.getFieldLength(this.getArg(0).invertedList.field, doc_id_current);
@@ -124,6 +136,7 @@ public class QrySopScore extends QrySop {
 			double lambda = ((RetrievalModelIndri) r).getlambda();
 			double p_mle = corpusTermFreq/corpusLength;
 			return (1-lambda)*((termFreq + mu*p_mle)/(docLength+mu)) + lambda*p_mle ;
+		
 		//}
 	}
 	
