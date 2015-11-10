@@ -3,6 +3,7 @@
  */
 
 import java.io.*;
+import java.util.Vector;
 
 /**
  *  The OR operator for all retrieval models.
@@ -14,6 +15,8 @@ public class QrySopWand extends QrySop {
 	 *  @param r The retrieval model that determines what is a match
 	 *  @return True if the query matches, otherwise false.
 	 */
+	public Vector<Double> weights = new Vector<Double>();
+	
 	public boolean docIteratorHasMatch (RetrievalModel r) {
 		if(r instanceof RetrievalModelIndri){
 			return this.docIteratorHasMatchMin(r);
@@ -51,15 +54,20 @@ public class QrySopWand extends QrySop {
 			int doc_id_current = this.docIteratorGetMatch();
 			double score = 1;
 			double temp = 0;
-			for(int i=0;i<this.args.size();i=i+2){
-				double weight = ((QrySopScore)this.args.get(i)).getScoreConstant(r);
-				if(this.args.get(i+1).docIteratorHasMatch(r) && (doc_id_current==this.args.get(i+1).docIteratorGetMatch())){
-					temp = this.args.get(i+1).getScore(r);
+			double weightSum = 0;
+			for(int i=0;i<this.weights.size();i++){
+				weightSum = weightSum + this.weights.get(i);	
+			}
+			//weightSum = 1;
+			for(int i=0;i<this.args.size();i++){
+				double weight = this.weights.get(i);
+				if(this.args.get(i).docIteratorHasMatch(r) && (doc_id_current==this.args.get(i).docIteratorGetMatch())){
+					temp = this.args.get(i).getScore(r);
 				}
 				else{
-					temp = ((QrySop)this.args.get(i+1)).getDefaultScoreIndri(r, doc_id_current);
+					temp = ((QrySop)this.args.get(i)).getDefaultScoreIndri(r, doc_id_current);
 				}
-				score = score * Math.pow(temp, weight);
+				score = score * Math.pow(temp, weight/weightSum);
 			}
 			return score;
 		}
@@ -68,10 +76,15 @@ public class QrySopWand extends QrySop {
 			throws IOException{
 		double score = 1;
 		double temp = 0;
-		for(int i=0;i<this.args.size();i=i+2){
-			double weight = ((QrySopScore)this.args.get(i)).getScoreConstant(r);
-			temp = ((QrySop)this.args.get(i+1)).getDefaultScoreIndri(r, doc_id_current);
-			score = score * Math.pow(temp, weight);
+		double weightSum = 0;
+		for(int i=0;i<this.weights.size();i++){
+			weightSum = weightSum + this.weights.get(i);	
+		}
+		//weightSum = 1;
+		for(int i=0;i<this.args.size();i++){
+			double weight = this.weights.get(i);
+			temp = ((QrySop)this.args.get(i)).getDefaultScoreIndri(r, doc_id_current);
+			score = score * Math.pow(temp, weight/weightSum);
 		}
 		return score;		
 	}

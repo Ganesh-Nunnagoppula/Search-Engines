@@ -15,6 +15,8 @@ import org.apache.lucene.search.*;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
 
+
+
 /**
  * QryEval is a simple application that reads queries from a file,
  * evaluates them against an index, and writes the results to an
@@ -99,7 +101,7 @@ public class QryEval {
 
 		//  Perform experiments.
 
-		processQueryFile(parameters.get("queryFilePath"), model,parameters.get("trecEvalOutputPath"));
+		processQueryFile(parameters.get("queryFilePath"), model,parameters.get("trecEvalOutputPath"),parameters);
 
 		//  Clean up.
 
@@ -135,6 +137,7 @@ public class QryEval {
 			double mu = Double.parseDouble(parameters.get ("Indri:mu"));
 			double lambda = Double.parseDouble(parameters.get ("Indri:lambda"));
 			model = new RetrievalModelIndri(mu,lambda);	
+			//ANALYZER.setStopwordRemoval(false);
 		}
 		else {
 			throw new IllegalArgumentException
@@ -215,79 +218,164 @@ public class QryEval {
 				currentOp.appendArg(arg);
 
 			} else if (token.equalsIgnoreCase("#or")) {
+				
 				currentOp = new QrySopOr ();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp);
 			} else if (token.equalsIgnoreCase("#syn")) {
+				
 				currentOp = new QryIopSyn();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp);
 			} else if (token.equalsIgnoreCase("#and")) {
+				
 				currentOp = new QrySopAnd();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp);  
 			} else if (token.equalsIgnoreCase("#wand")) {
+				weightExpected = true;
+				weightStack.clear();
 				currentOp = new QrySopWand();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp); 
 			} else if (token.equalsIgnoreCase("#near")) {
+				
 				currentOp = new QryIopNear(n);
 				currentOp.setDisplayName (token + "/" + n);
 				opStack.push(currentOp);  
 			} else if (token.equalsIgnoreCase("#window")) {
+				
 				currentOp = new QryIopWindow(n);
 				currentOp.setDisplayName (token + "/" + n);
 				opStack.push(currentOp);   
 		    } else if (token.equalsIgnoreCase("#sum")){
+		    	
 				currentOp = new QrySopSum();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp); 
 		    } else if (token.equalsIgnoreCase("#wsum")){
+		    	weightExpected = true;
+		    	weightStack.clear();
 				currentOp = new QrySopWsum();
 				currentOp.setDisplayName (token);
 				opStack.push(currentOp); 
 			}else {
-
-				//  Split the token into a term and a field.
-
-				int delimiter = token.indexOf('.');
+				double d = 0;
 				String field = null;
 				String term = null;
 
-				if (delimiter < 0) {
-					field = "body";
-					term = token;
-				} else {
+				//  Split the token into a term and a field.
+				if(weightExpected)
+				{
+					try{
+						int wSize = 0;
+						if(currentOp instanceof QrySopWand){
+							wSize = ((QrySopWand)currentOp).weights.size();
+						}
+						if(currentOp instanceof QrySopWsum){
+							wSize = ((QrySopWsum)currentOp).weights.size();
+						}
+						if(((currentOp instanceof QrySopWand) || (currentOp instanceof QrySopWsum)) &&currentOp.args.size() == wSize){
+						d=Double.parseDouble(token);
+						weightStack.push(d);
+						if(currentOp instanceof QrySopWand ){
+							((QrySopWand)currentOp).weights.add(d);
+						}
+						if(currentOp instanceof QrySopWsum ){
+							((QrySopWsum)currentOp).weights.add(d);
+						}
+						}
+						else{
+							d = Double.parseDouble("abc");
+						}
+					}
+					catch(NumberFormatException e){
+						int delimiter = token.indexOf('.');
 
-					field = token.substring(delimiter + 1).toLowerCase();
-					term = token.substring(0, delimiter);
-					if(field.length()==1)
-					{
+
+						if (delimiter < 0) {
+							field = "body";
+							term = token;
+						} else {
+
+							field = token.substring(delimiter + 1).toLowerCase();
+							term = token.substring(0, delimiter);
+						}
+
+						if ((field.compareTo("url") != 0) &&
+								(field.compareTo("keywords") != 0) &&
+								(field.compareTo("title") != 0) &&
+								(field.compareTo("body") != 0) &&
+								(field.compareTo("inlink") != 0)) {
+							field = "body";
+							term = token;
+							//throw new IllegalArgumentException ("Error: Unknown field " + token);
+						}
+						//  Lexical processing, stopwords, stemming.  A loop is used
+						//  just in case a term (e.g., "near-death") gets tokenized into
+						//  multiple terms (e.g., "near" and "death").
+
+						String t[] = tokenizeQuery(term);
+						if(t.length==0 && ((currentOp instanceof QrySopWand )||(currentOp instanceof QrySopWsum ))){
+							weightStack.pop();
+							if(currentOp instanceof QrySopWand ){
+								int s = ((QrySopWand)currentOp).weights.size();
+								((QrySopWand)currentOp).weights.remove(s-1);
+							}
+							if(currentOp instanceof QrySopWsum ){
+								int s = ((QrySopWsum)currentOp).weights.size();
+								((QrySopWsum)currentOp).weights.remove(s-1);
+							}
+							
+							
+						}
+
+						for (int j = 0; j < t.length; j++) {
+
+							Qry termOp = new QryIopTerm(t [j], field);
+
+							currentOp.appendArg (termOp);
+						}
+						
+					}
+				}
+				else{
+					int delimiter = token.indexOf('.');
+
+
+					if (delimiter < 0) {
 						field = "body";
 						term = token;
+					} else {
+
+						field = token.substring(delimiter + 1).toLowerCase();
+						term = token.substring(0, delimiter);
+					}
+
+					if ((field.compareTo("url") != 0) &&
+							(field.compareTo("keywords") != 0) &&
+							(field.compareTo("title") != 0) &&
+							(field.compareTo("body") != 0) &&
+							(field.compareTo("inlink") != 0)) {
+						throw new IllegalArgumentException ("Error: Unknown field " + token);
+					}
+					//  Lexical processing, stopwords, stemming.  A loop is used
+					//  just in case a term (e.g., "near-death") gets tokenized into
+					//  multiple terms (e.g., "near" and "death").
+
+					String t[] = tokenizeQuery(term);
+
+					for (int j = 0; j < t.length; j++) {
+
+						Qry termOp = new QryIopTerm(t [j], field);
+
+						currentOp.appendArg (termOp);
 					}
 				}
 
-				if ((field.compareTo("url") != 0) &&
-						(field.compareTo("keywords") != 0) &&
-						(field.compareTo("title") != 0) &&
-						(field.compareTo("body") != 0) &&
-						(field.compareTo("inlink") != 0)) {
-					throw new IllegalArgumentException ("Error: Unknown field " + token);
-				}
+				
 
-				//  Lexical processing, stopwords, stemming.  A loop is used
-				//  just in case a term (e.g., "near-death") gets tokenized into
-				//  multiple terms (e.g., "near" and "death").
-
-				String t[] = tokenizeQuery(term);
-
-				for (int j = 0; j < t.length; j++) {
-
-					Qry termOp = new QryIopTerm(t [j], field);
-
-					currentOp.appendArg (termOp);
-				}
+				
 			}
 		}
 
@@ -412,10 +500,6 @@ public class QryEval {
 				q.initialize (model);
 				while (q.docIteratorHasMatch (model)) {
 					int docid = q.docIteratorGetMatch ();
-					if(docid==462807)
-					{
-						int temp = 1;
-					}
 					//System.out.println(docid + "\n");
 					double score = ((QrySop) q).getScore (model);
 					r.add (docid, score);
@@ -432,11 +516,11 @@ public class QryEval {
 	 * Process the query file.
 	 * @param queryFilePath
 	 * @param model
-	 * @throws IOException Error accessing the Lucene index.
+	 * @throws Exception 
 	 */
 	static void processQueryFile(String queryFilePath,
-			RetrievalModel model, String path)
-					throws IOException {
+			RetrievalModel model, String path, Map<String, String> parameters)
+					throws Exception {
 
 		BufferedReader input = null;
 		File output = new File(path);
@@ -447,6 +531,7 @@ public class QryEval {
 
 		FileWriter fw = new FileWriter(output.getAbsoluteFile());
 		BufferedWriter bw = new BufferedWriter(fw);
+		
 
 		try {
 			String qLine = null;
@@ -469,6 +554,75 @@ public class QryEval {
 				String query = qLine.substring(d + 1);
 
 				System.out.println("Query " + qLine);
+				
+				if(parameters.containsKey("fb") && (parameters.get("fb").equals("true"))){
+					File qryOutput = new File(parameters.get("fbExpansionQueryFile"));
+					if(!qryOutput.exists())
+					{
+						qryOutput.createNewFile();
+					}
+
+					FileWriter qryfw = new FileWriter(qryOutput.getAbsoluteFile());
+					BufferedWriter qrybw = new BufferedWriter(qryfw);
+					if(parameters.containsKey("fbInitialRankingFile")){
+						String fbFilePath = parameters.get("fbInitialRankingFile");
+						BufferedReader fbInput = null;
+						String fbLine = null;
+						fbInput = new BufferedReader(new FileReader(fbFilePath));
+						ScoreList r = null;
+						r = new ScoreList();
+						while ((fbLine = fbInput.readLine()) != null) {
+							StringTokenizer tokens = new StringTokenizer(fbLine, " ", true);
+							String token = null;
+							List<String> tokenVec = new ArrayList<String>();
+							while(tokens.hasMoreTokens()){
+								token = tokens.nextToken();
+								if(token.equals(" ")){
+									continue;
+								}
+								tokenVec.add(token);
+							}
+							
+							if(tokenVec.get(0).equals(qid)){
+								int docId = -1;
+								try {
+									docId = Idx.getInternalDocid(tokenVec.get(2));
+								}
+								catch (IOException ex){
+									ex.printStackTrace();
+								}
+								
+								double score = Double.parseDouble(tokenVec.get(4));
+								r.add(docId, score);
+							}
+						}
+						fbInput.close();
+						r.sort();
+						String expandedQry = getExpandedQryScoreList(r,parameters);
+						
+						qrybw.write(qid + ": " + expandedQry);
+						qrybw.newLine();
+						double orgWeight = Double.parseDouble(parameters.get("fbOrigWeight"));
+						query = "#wand (" + query + " )";
+						query = "#wand ( " + orgWeight + " " + query + " " + (1-orgWeight) + " " + expandedQry + " )";	
+					}
+					else{
+						ScoreList r = null;
+
+						r = processQuery(query, model);
+						r.sort();
+						String expandedQry = getExpandedQryScoreList(r,parameters);
+						
+						qrybw.write(qid + ": " + expandedQry);
+						qrybw.newLine();
+						double orgWeight = Double.parseDouble(parameters.get("fbOrigWeight"));
+						query = "#and (" + query + " )";
+						query = "#wand ( " + orgWeight + " " + query + " " + (1-orgWeight) + " " + expandedQry + " )";
+						
+					}
+					qrybw.close();
+				}
+				
 
 				ScoreList r = null;
 
@@ -487,9 +641,60 @@ public class QryEval {
 		} finally {
 			input.close();
 			bw.close();
+			
 		}
 	}
 
+	
+	static String getExpandedQryScoreList(ScoreList r,Map<String, String> parameters) throws IOException{
+		int fbDocs = Integer.parseInt(parameters.get("fbDocs"));
+		HashSet<String> terms = new HashSet<String>();
+		expandedQry expQryList = new expandedQry();
+		for(int i=0;i<fbDocs;i++){
+			TermVector forwardIndex = new TermVector(r.getDocid(i),"body");
+			int numTerms = forwardIndex.termsLength();
+			for(int j=1;j<numTerms;j++){
+				String curTerm = forwardIndex.stemString(j);
+				double corpusTermFreq = forwardIndex.totalStemFreq(j);
+				double corpusLength = Idx.getSumOfFieldLengths("body");
+				if(!terms.contains(curTerm)){
+					terms.add(curTerm);
+					double termWeight = 0.0;
+					for(int k=0;k<fbDocs;k++){
+						TermVector forwardIndexTemp = new TermVector(r.getDocid(k),"body");
+						double termFreq = forwardIndexTemp.stemTFString(curTerm);
+						if(termFreq==-1)
+						{
+							termFreq = 0;
+						}
+						double docLength = Idx.getFieldLength("body", r.getDocid(k));
+						double mu = Double.parseDouble(parameters.get("fbMu"));
+						double p_mle = corpusTermFreq/corpusLength;
+						double p_td = ((termFreq + mu*p_mle)/(docLength+mu));
+						double curDocScore =  p_td*r.getDocidScore(k)*Math.log(1/p_mle);
+						termWeight = termWeight+curDocScore;
+					}
+					expQryList.add(curTerm, termWeight);
+				}
+				
+			}
+			
+			
+		}
+		expQryList.sort();
+		
+		String expandedQry = "#wand (";
+		int numQryTerms = Integer.parseInt(parameters.get("fbTerms")); 
+		for(int i=0;i<numQryTerms;i++){
+			expandedQry = expandedQry+ " " + (expQryList.getWeight(i)) + " " + expQryList.getTerm(i);
+		}
+		expandedQry = expandedQry+" )";
+		
+		return expandedQry;
+		
+	}
+	
+	
 	static void writeResults(String queryName, ScoreList result, BufferedWriter bw) throws IOException {
 
 

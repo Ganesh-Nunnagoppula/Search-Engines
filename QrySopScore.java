@@ -115,12 +115,6 @@ public class QrySopScore extends QrySop {
 		//}
 	}
 	
-	public double getScoreConstant(RetrievalModel r) throws IOException {
-		String str = this.getArg(0).toString();
-		str = str.substring(0, 3);
-		double d = Double.parseDouble(str);
-		return d;	
-	}
 	
 	public double getDefaultScoreIndri (RetrievalModel r, int doc_id_current) throws IOException {
 		/*if (! this.docIteratorHasMatchCache()) {

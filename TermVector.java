@@ -3,6 +3,8 @@
  */
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.lucene.index.DocsAndPositionsEnum;
 import org.apache.lucene.index.Term;
@@ -40,6 +42,7 @@ public class TermVector {
 	private String[] stems;	// The vocabulary. 0 indicates a stopword
 	private int[] stemsFreq;	// The frequency (tf) of each entry in stems
 	private Term[] terms;
+	private Map<String, Integer> hashTerms  = new HashMap<String, Integer>();
 
 	//  --------------- Methods ---------------------------------------
 
@@ -76,6 +79,7 @@ public class TermVector {
 			terms[i] = new Term(fieldName, ithTerm.term().utf8ToString());
 			stemsFreq[i] = (int) ithTerm.totalTermFreq();
 			fieldLength += stemsFreq[i]; 
+			hashTerms.put(stems[i], i);
 
 			//  Find the position of the last (indexed) term in the
 			//  document, so that the positions array can be created and
@@ -131,6 +135,10 @@ public class TermVector {
 	public int positionsLength() {
 		return this.positions.length;
 	}
+	
+	public int termsLength(){
+		return this.terms.length;
+	}
 
 	/**
 	 *  Return the index of the stem that occurred at position i in the
@@ -169,6 +177,19 @@ public class TermVector {
 			return stems[i];
 		else
 			return null;
+	}
+	
+	public int stemTFString(String str) throws IOException {
+		/*for(int i=1;i<this.terms.length;i++)
+		{
+			if(this.stems[i].equals(str)){
+				return stemsFreq[i];
+			}
+		}*/
+		if(hashTerms.containsKey(str)){
+			return stemsFreq[hashTerms.get(str)];
+		}
+		return -1;
 	}
 
 	/**
