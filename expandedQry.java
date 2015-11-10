@@ -5,9 +5,9 @@ import java.util.*;
 
 public class expandedQry {
 	
-	private class expandedQryEntry{
-		private String term;
-		private double weight;
+	public class expandedQryEntry{
+		public String term;
+		public double weight;
 	
 		
 		private expandedQryEntry(String term, double weight){
@@ -15,7 +15,7 @@ public class expandedQry {
 			this.weight = weight;
 		}
 	}
-	private List<expandedQryEntry> expQrys = new ArrayList<expandedQryEntry>();
+	public List<expandedQryEntry> expQrys = new ArrayList<expandedQryEntry>();
 	
 	public void add(String term, double weight) {
 		expQrys.add(new expandedQryEntry(term, weight));

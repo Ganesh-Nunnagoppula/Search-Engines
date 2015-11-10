@@ -5,6 +5,7 @@
 
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import org.apache.lucene.analysis.Analyzer.TokenStreamComponents;
 import org.apache.lucene.analysis.TokenStream;
@@ -14,6 +15,8 @@ import org.apache.lucene.index.*;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
+
+//import expandedQry.expandedQryEntry;
 
 
 
@@ -531,6 +534,19 @@ public class QryEval {
 
 		FileWriter fw = new FileWriter(output.getAbsoluteFile());
 		BufferedWriter bw = new BufferedWriter(fw);
+		File qryOutput = null;
+		FileWriter qryfw = null;
+		BufferedWriter qrybw = null;
+		if(parameters.containsKey("fb") && (parameters.get("fb").equals("true"))){
+			 qryOutput = new File(parameters.get("fbExpansionQueryFile"));
+			if(!qryOutput.exists())
+			{
+				qryOutput.createNewFile();
+			}
+
+			 qryfw = new FileWriter(qryOutput.getAbsoluteFile());
+			 qrybw = new BufferedWriter(qryfw);
+		}
 		
 
 		try {
@@ -556,14 +572,14 @@ public class QryEval {
 				System.out.println("Query " + qLine);
 				
 				if(parameters.containsKey("fb") && (parameters.get("fb").equals("true"))){
-					File qryOutput = new File(parameters.get("fbExpansionQueryFile"));
+					/*File qryOutput = new File(parameters.get("fbExpansionQueryFile"));
 					if(!qryOutput.exists())
 					{
 						qryOutput.createNewFile();
 					}
 
 					FileWriter qryfw = new FileWriter(qryOutput.getAbsoluteFile());
-					BufferedWriter qrybw = new BufferedWriter(qryfw);
+					BufferedWriter qrybw = new BufferedWriter(qryfw);*/
 					if(parameters.containsKey("fbInitialRankingFile")){
 						String fbFilePath = parameters.get("fbInitialRankingFile");
 						BufferedReader fbInput = null;
@@ -603,7 +619,7 @@ public class QryEval {
 						qrybw.write(qid + ": " + expandedQry);
 						qrybw.newLine();
 						double orgWeight = Double.parseDouble(parameters.get("fbOrigWeight"));
-						query = "#wand (" + query + " )";
+						query = "#and (" + query + " )";
 						query = "#wand ( " + orgWeight + " " + query + " " + (1-orgWeight) + " " + expandedQry + " )";	
 					}
 					else{
@@ -620,7 +636,7 @@ public class QryEval {
 						query = "#wand ( " + orgWeight + " " + query + " " + (1-orgWeight) + " " + expandedQry + " )";
 						
 					}
-					qrybw.close();
+					
 				}
 				
 
@@ -641,6 +657,7 @@ public class QryEval {
 		} finally {
 			input.close();
 			bw.close();
+			qrybw.close();
 			
 		}
 	}
@@ -648,18 +665,24 @@ public class QryEval {
 	
 	static String getExpandedQryScoreList(ScoreList r,Map<String, String> parameters) throws IOException{
 		int fbDocs = Integer.parseInt(parameters.get("fbDocs"));
-		HashSet<String> terms = new HashSet<String>();
+		//HashSet<String > terms = new HashSet<String>();
+		Map<String, Double> terms  = new HashMap<String, Double>();
+		Map<String, Double> ctfTerms  = new HashMap<String, Double>();
 		expandedQry expQryList = new expandedQry();
 		for(int i=0;i<fbDocs;i++){
 			TermVector forwardIndex = new TermVector(r.getDocid(i),"body");
-			int numTerms = forwardIndex.termsLength();
+			//int numTerms = forwardIndex.termsLength();
+			int numTerms = forwardIndex.stemsLength();
 			for(int j=1;j<numTerms;j++){
 				String curTerm = forwardIndex.stemString(j);
 				double corpusTermFreq = forwardIndex.totalStemFreq(j);
+				ctfTerms.put(curTerm, corpusTermFreq);
 				double corpusLength = Idx.getSumOfFieldLengths("body");
-				if(!terms.contains(curTerm)){
-					terms.add(curTerm);
-					double termWeight = 0.0;
+				
+				if(!terms.containsKey(curTerm)){
+					terms.put(curTerm, 0.0);
+					//terms.add(curTerm,0.0);
+					/*double termWeight = 0.0;
 					for(int k=0;k<fbDocs;k++){
 						TermVector forwardIndexTemp = new TermVector(r.getDocid(k),"body");
 						double termFreq = forwardIndexTemp.stemTFString(curTerm);
@@ -674,14 +697,71 @@ public class QryEval {
 						double curDocScore =  p_td*r.getDocidScore(k)*Math.log(1/p_mle);
 						termWeight = termWeight+curDocScore;
 					}
-					expQryList.add(curTerm, termWeight);
-				}
-				
+					expQryList.add(curTerm, termWeight);*/
+				}	
+			}	
+		}
+		for(int i=0;i<fbDocs;i++){
+			TermVector forwardIndex = new TermVector(r.getDocid(i),"body");
+			//int numTerms = forwardIndex.termsLength();
+			int numTerms = forwardIndex.stemsLength();
+			Map<String, Double> termsTemp = new HashMap<String, Double>(terms);
+			for(int j=1;j<numTerms;j++){
+				String curTerm = forwardIndex.stemString(j);
+				double corpusTermFreq = forwardIndex.totalStemFreq(j);
+				double corpusLength = Idx.getSumOfFieldLengths("body");
+				//if((termsTemp.containsKey(curTerm))){
+					double termFreq = forwardIndex.stemFreq(j);
+					double docLength = Idx.getFieldLength("body", r.getDocid(i));
+					double mu = Double.parseDouble(parameters.get("fbMu"));
+					double p_mle = corpusTermFreq/corpusLength;
+					if(corpusLength==0){
+						System.out.println("gmnbm\n ");
+					}
+					double p_td = ((termFreq + mu*p_mle)/(docLength+mu));
+					if(docLength==0){
+						System.out.println("docLengthgmnbm\n ");
+					}
+					double curDocScore =  p_td*r.getDocidScore(i)*Math.log(1/p_mle);
+					double scoreTemp = terms.get(curTerm) ;
+					scoreTemp = scoreTemp + curDocScore;
+					termsTemp.remove(curTerm);	
+					terms.put(curTerm, scoreTemp);
+					if(i==(fbDocs-1)){
+						expQryList.add(curTerm, scoreTemp);
+					}
+				//}	
 			}
-			
-			
+			for(Entry<String, Double> entry : termsTemp.entrySet()){
+				//double corpusTermFreq = 
+				String curTerm = entry.getKey();
+			    double corpusTermFreq = ctfTerms.get(curTerm);
+				double corpusLength = Idx.getSumOfFieldLengths("body");
+				double termFreq = 0.0;
+				double docLength = Idx.getFieldLength("body", r.getDocid(i));
+				double mu = Double.parseDouble(parameters.get("fbMu"));
+				double p_mle = corpusTermFreq/corpusLength;
+				if(corpusLength==0){
+					System.out.println("expgmnbm\n ");
+				}
+				double p_td = ((termFreq + mu*p_mle)/(docLength+mu));
+				if(docLength==0){
+					System.out.println("expdocLengthgmnbm\n ");
+				}
+				double curDocScore =  p_td*r.getDocidScore(i)*Math.log(1/p_mle);
+				double scoreTemp = terms.get(curTerm) ;
+				scoreTemp = scoreTemp + curDocScore;
+				terms.put(curTerm, scoreTemp);	
+				if(i==(fbDocs-1)){
+					expQryList.add(curTerm, scoreTemp);
+				}
+			}	
 		}
 		expQryList.sort();
+		/*for(expandedQry.expandedQryEntry e : expQryList.expQrys){
+			System.out.println(e.term + "\t" + e.weight);
+		}*/
+		
 		
 		String expandedQry = "#wand (";
 		int numQryTerms = Integer.parseInt(parameters.get("fbTerms")); 
