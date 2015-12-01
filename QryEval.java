@@ -101,6 +101,9 @@ public class QryEval {
 
 		Idx.initialize (parameters.get ("indexPath"));
 		RetrievalModel model = initializeRetrievalModel (parameters);
+		if(model instanceof  RetrievalModelLetor){
+			((RetrievalModelLetor) model).processLetorTrain(parameters);
+		}
 
 		//  Perform experiments.
 
@@ -141,6 +144,9 @@ public class QryEval {
 			double lambda = Double.parseDouble(parameters.get ("Indri:lambda"));
 			model = new RetrievalModelIndri(mu,lambda);	
 			//ANALYZER.setStopwordRemoval(false);
+		}
+		else if(modelString.equals("letor")){
+			model = new RetrievalModelLetor();
 		}
 		else {
 			throw new IllegalArgumentException
@@ -641,27 +647,48 @@ public class QryEval {
 				
 
 				ScoreList r = null;
+				if(model instanceof RetrievalModelLetor){
 
-				r = processQuery(query, model);
-				r.sort();
-				if (r != null) {
-					writeResults(qid,r,bw);
+					processQueryLetor(query,model,qid,parameters);
+				}
+				else{
+					r = processQuery(query, model);
+					r.sort();
+					if (r != null) {
+						writeResults(qid,r,bw);
 
 					//printResults(qid, r);
 
-					System.out.println();
+						System.out.println();
+					}
 				}
+			}
+			if(model instanceof RetrievalModelLetor){
+				((RetrievalModelLetor)model).processLetorClassify();
 			}
 		} catch (IOException ex) {
 			ex.printStackTrace();
 		} finally {
 			input.close();
 			bw.close();
-			qrybw.close();
+			if(parameters.containsKey("fbInitialRankingFile")){
+				qrybw.close();
+			}
 			
 		}
 	}
 
+	
+	static void processQueryLetor(String query, RetrievalModel model, String qid, Map<String, String> parameters ) throws Exception{
+		ScoreList r = null;
+		double b = Double.parseDouble(parameters.get("BM25:b"));
+		double k_1 = Double.parseDouble(parameters.get("BM25:k_1"));
+		double k_3 = Double.parseDouble(parameters.get("BM25:k_3"));
+		RetrievalModel initialRankingModel = new RetrievalModelBM25(b,k_1,k_3);
+		r = processQuery(query, initialRankingModel);
+		r.sort();
+		((RetrievalModelLetor)model).processLetorTest(r, qid, query);
+	}
 	
 	static String getExpandedQryScoreList(ScoreList r,Map<String, String> parameters) throws IOException{
 		int fbDocs = Integer.parseInt(parameters.get("fbDocs"));
